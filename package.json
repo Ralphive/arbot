@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "kraken-api": "^1.0.0",
     "localbitcoins-api": "0.0.3"
   }
 }
