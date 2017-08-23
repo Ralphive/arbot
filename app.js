@@ -30,7 +30,7 @@ var sellTo = {
         CountryName: 'Brazil/',
         Currency: 'BRL',       //Used in EX rate         
         Payment1: 'national-bank-transfer/',
-        Payment2: null,
+        Payment2: 'transfers-with-specific-bank/',
         CurrPrice: null,
         FoxBitOrders: null         //Last Sales Order on Exchange
     };
@@ -47,25 +47,35 @@ console.log('Retrieving Exchange Rates from '+ config.EXsrc)
 sellTo.FoxBitOrders = getLastOrderFoxBit(sellTo.Currency);
 
 //Get Fiat Data
-FiatExRate = getfiatExRate();
+var FiatExRate = getfiatExRate();
 
 var buyOffers = null;
 var sellOffers = null;
+var buy2Offers = null;
+var sell2Offers = null;
 
-retrieveOffersLocalBTC(buyFrom, function (data){
+retrieveOffersLocalBTC(buyFrom, 'Payment1', function (data){
     console.log(data.data.ad_count + " Buying offers retrieved from "+buyFrom.CountryName);
     buyOffers = data;
     
-    retrieveOffersLocalBTC(sellTo, function (data){
-        console.log(data.data.ad_count + " SELLING offers retrieved from "+sellTo.CountryName);
+    retrieveOffersLocalBTC(sellTo, 'Payment1', function (data){
+        console.log(data.data.ad_count + " Selling offers *"+sellTo.Payment1+"* retrieved from "+sellTo.CountryName) ;
         sellOffers = data;
-        makeAnalysis(buyOffers.data.ad_list,sellOffers.data.ad_list);
+
+        if(sellTo.Payment2){
+            retrieveOffersLocalBTC(sellTo, 'Payment2', function (data){
+                console.log(data.data.ad_count + " Selling offers*"+sellTo.Payment2+"*  retrieved from "+sellTo.CountryName);
+                sell2Offers = data;
+                makeAnalysis(buyOffers.data.ad_list,sellOffers.data.ad_list,null,sell2Offers.data.ad_list);
+
+            });    
+        }
     });
 });
 
 
-function retrieveOffersLocalBTC(ads, callback){
-    lbc.api('buy-bitcoins-online', formatUrl(ads), params, function(error, data) {
+function retrieveOffersLocalBTC(ads, payment, callback){
+    lbc.api('buy-bitcoins-online', formatUrl(ads,payment), params, function(error, data) {
         if(error) {
             console.log(error);
         }
@@ -76,66 +86,39 @@ function retrieveOffersLocalBTC(ads, callback){
 }
 
 
-function makeAnalysis(buy, sell)
+function makeAnalysis(buy, sell, buy2, sell2)
 {   
     console.log('analyzing offers...');
 
-    var ibuy = 0;
-    var isell = 0;
-    var cheapBuy = {};
-    var cheapSell = {};
-
-    //Find cheapest applicable buying option
-    for (ibuy; ibuy<buy.length; ibuy++){
-        //To implemente logic for finding cheapest available ad
-
-        if (buy[ibuy].data.require_trade_volume >=2)
-            continue;
-        cheapBuy  = buy[ibuy]
-        cheapBuy.data.temp_price_xe = cheapBuy.data.temp_price * fiatExRate;
-        break;
-    }
-
-    //Find cheapest applicable selling option
-    for (isell; isell<sell.length; isell++){
-        //To implemente logic for finding cheapest available ad
-        
-        if (sell[isell].data.min_amount > config.maxSellAmount)
-            continue;
-        
-        
-        cheapSell  = sell[isell]
-        cheapSell.data.temp_price_xe = cheapSell.data.temp_price / fiatExRate;
-        break;
-    }
-    
+    var cheapBuy = findCheapestAd(buy,null,false)
+    var cheapSell = findCheapestAd(sell,null,true)
+   
+    if(buy2)
+        cheapBuy = findCheapestAd(buy2,cheapBuy,false)
+    if(sell2)
+        cheapSell = findCheapestAd(sell2,cheapSell,true);
+   
     //Fees and Values
     var SellingFee = cheapSell.data.temp_price_xe * config.sellFee
     var arbRate =((cheapSell.data.temp_price-SellingFee)/cheapBuy.data.temp_price_xe -1)*100;
-    
-    arbRate = Math.round(arbRate * 100) / 100;
-    SellingFee = Math.round(SellingFee * 100) / 100;
 
-
+    console.log('>>>>>>>>>>> LOCAL BITCOINS <<<<<<<<<<<')    
     console.log('Cheapest BUYING option in '+buyFrom.CountryName+' is '+ 
-                cheapBuy.data.currency+' '+cheapBuy.data.temp_price + 
-                ' i.e. - '+ sellTo.Currency+' '+cheapBuy.data.temp_price_xe);
-
-    
-    console.log('>>>>>>>>>>>Local Bitcoins <<<<<<<<<<<')
+                cheapBuy.data.currency+' '+rnd(cheapBuy.data.temp_price) + 
+                ' i.e. - '+ sellTo.Currency+' '+rnd(cheapBuy.data.temp_price_xe));
     console.log('Cheapest SELLING advertisement in '+sellTo.CountryName+' is '+ 
             cheapSell.data.currency+' '+cheapSell.data.temp_price+ 
-                'i.e. - '+ buyFrom.Currency+' '+(cheapSell.data.temp_price_xe))
+                ' i.e. - '+ buyFrom.Currency+' '+rnd(cheapSell.data.temp_price_xe))
 
-    console.log('Current NET Arbitrage rate is '+arbRate+'%')
+    console.log('Current NET Arbitrage rate is '+rnd(arbRate)+'%')
     //console.log('Deducted fee '+SellingFee+'('+config.sellFee*100+'%)' )
     console.log('Buy Ad - '+cheapBuy.actions.public_view)
     console.log('Sell Ad - '+cheapSell.actions.public_view)
     process.exit();        
 }
 
-function formatUrl(params){
-    return params.CountryCode+params.CountryName+params.Payment1
+function formatUrl(params, payment){
+    return params.CountryCode+params.CountryName+params[payment]
 }
 
 function getUserScore(userName){
@@ -197,9 +180,60 @@ function getfiatExRate(currency){
             console.log('error:', error); // Print the error if one occurred 
         }else{
             body = JSON.parse(body);
-            fiatExRate = body.rates[sellTo.Currency];
             console.log(buyFrom.Currency +' x '+sellTo.Currency+' exchange rate is '+body.rates[sellTo.Currency]);
+            FiatExRate = body.rates[sellTo.Currency]
             return (body.rates[sellTo.Currency]);
         }        
       });
+}
+
+
+function findCheapestAd(adlist, prevCheap, isSelling){      
+    
+    var cheapestOffer = {};
+
+    for (var i =0; i < adlist.length; i++){
+        
+        if(prevCheap && (prevCheap.data.temp_price <= adlist[i].data.temp_price))
+            return prevCheap;
+        
+        if (isSelling){
+            if(!validSellingAd(adlist[i]))
+                continue;
+        }else{
+            if (!validBuyingAd(adlist[i]))
+                continue;   
+        }
+            
+        
+        cheapestOffer  = adlist[i]
+        
+        if(isSelling)
+            cheapestOffer.data.temp_price_xe = cheapestOffer.data.temp_price / FiatExRate;
+        else
+            cheapestOffer.data.temp_price_xe = cheapestOffer.data.temp_price * FiatExRate;
+        
+        return cheapestOffer;
+     }  
+}
+
+function validBuyingAd(ad){
+    //Implement the Ad Filters needed
+    if(ad.data.require_trade_volume >=2)
+        return false;
+    if(ad.data.profile.username === 'jaymalteser')
+        return false;
+
+    return true;
+}
+
+function validSellingAd(ad){
+    if (ad.data.min_amount > config.maxSellAmount)
+        return false;
+    return true;
+
+}
+
+function rnd(num){
+    return Math.round(num * 100) / 100;
 }
