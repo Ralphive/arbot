@@ -2,6 +2,18 @@
 //** Compare multiple Buying Sources with Multiple Selling Sources */
 // Load Node Dependencies
 const request = require ('request');
+var express = require('express');
+var bodyParser = require('body-parser');
+
+var path = require('path');
+var port = 8083
+
+//Configure Express 
+var app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
 
 // Load Local Dependencies
 const LBCLib = require('./lib/localbtc');
@@ -11,6 +23,7 @@ const Fiat = require('./lib/fiat')
 var FiatExRate = [];
 var buyOptions = [];
 var SelOptions = [];
+var output = [];
 
 var buyFrom = {
         CountryCode: 'GB/',
@@ -31,14 +44,38 @@ var selok = false;
 var foxok = false;
 var kraok = false;
 
+/** Endpoints */
+app.get('/', function(req, res){
+    res.sendFile(path.join(__dirname, 'views/index.html'));
+});
+
+//Called by FB Integration
+// Receives a Json with user + Pictures array
+app.get('/getData', function(req, res){ 
+        res.send(output);        
+});
+
+app.get('/getRates', function(req, res){ 
+    var outex = {};
+    for (var key in FiatExRate) {
+        outex[key] = rnd(FiatExRate[key])
+     }
+
+    res.send(outex);        
+});
+  
 
 
-run(function(data){
-    console.log(JSON.stringify(data));
-    process.exit();    
-})
 
 function run(callback){
+    
+    FiatExRate = [];
+    buyOptions = [];
+    SelOptions = [];
+    buyok = false;
+    selok = false;
+    foxok = false;
+    kraok = false;
 
     //Get exchange rates    
     Fiat.getExRate(sellTo.Currency,buyFrom.Currency, function(rates)
@@ -115,7 +152,7 @@ function makeAnalysisIfDone(callback){
 
 function mankeAnalysis(callback){
     //Calculates Arbitrage Price for each buying X selling Option
-    var output = [buyOptions.length];
+    output = [buyOptions.length];
     for(var i = 0; i<buyOptions.length;i++){
         console.log('>>>>>>>>>>>>>>>>> BUY ON '+ buyOptions[i].src+ ' <<<<<<<<<<<<<<<<<')
         console.log('Price: '+buyOptions[i].currency+' '+ buyOptions[i].value)
@@ -128,7 +165,7 @@ function mankeAnalysis(callback){
                 output[i].localValue = buylocal;
                 output[i].localCurrency = SelOptions[j].currency;
                 output[i].exRate = rnd(FiatExRate[buyOptions[i].currency])
-                output[i].sell = [];                
+                output[i].sell = [SelOptions.length];                
             }
             console.log('>>>>>>>>>>>>>>>>> SELL ON '+ SelOptions[j].src+ ' <<<<<<<<<<<<<<<<<')   
             console.log('Price: '+SelOptions[j].currency+' '+ SelOptions[j].value)
@@ -138,8 +175,8 @@ function mankeAnalysis(callback){
             console.log('NET ARBITRAGE RATE: '+ arbitrage+'%'); 
             console.log('Link: '+ SelOptions[j].link); 
             
-            output[i].sell[j] = SelOptions[j];
-            output[i].sell[j].arbitrage = arbitrage;
+            output[i].sell[j] = JSON.parse(JSON.stringify(SelOptions[j])); //To not reference the array
+            output[i].sell[j].arbitrage = arbitrage;                        //When updating in here
         }
         console.log('--------------------------------------------------------')   
     }
@@ -176,3 +213,16 @@ function formatOption(src,value, currency, link){
 function netPrice(value, fee){
     return value*(1+fee);
 }
+
+var server = app.listen(port, function(){
+    console.log('Server listening on port '+port);
+    
+    
+    run(function(data){
+        output = data
+    })
+    setInterval(run,40000,function(data){
+        output = data
+    })
+  });
+  
