@@ -129,7 +129,7 @@ function refreshClass(boxId, value){
 
 function box3Icon(dest){
     if (dest == 'FoxBit'){
-        return 'fa fa-firefox'
+        return 'firefox'
     }
 
     return 'ion ion-social-bitcoin-outline' 
