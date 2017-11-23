@@ -69,7 +69,6 @@ app.get('/getRates', function(req, res){
 
 function run(callback){
     try{
-        FiatExRate = [];
         buyOptions = [];
         SelOptions = [];
         buyok = false;
@@ -80,7 +79,9 @@ function run(callback){
         //Get exchange rates    
         Fiat.getExRate(sellTo.Currency,buyFrom.Currency, function(rates)
         {
-            FiatExRate = rates
+            if (rates){
+                FiatExRate = rates;
+            }
         })
     
         //Get Selling price on Foxbit
@@ -132,6 +133,7 @@ function run(callback){
         console.log("leaving catch block");
     }
 }
+
 
 
 function retrieveOffers(params,callback){
