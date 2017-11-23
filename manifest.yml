@@ -1,0 +1,5 @@
+---
+applications:
+- name: arbot
+  memory: 64m
+  instances: 1
