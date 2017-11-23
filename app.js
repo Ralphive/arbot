@@ -68,63 +68,69 @@ app.get('/getRates', function(req, res){
 
 
 function run(callback){
+    try{
+        FiatExRate = [];
+        buyOptions = [];
+        SelOptions = [];
+        buyok = false;
+        selok = false;
+        foxok = false;
+        kraok = false;
     
-    FiatExRate = [];
-    buyOptions = [];
-    SelOptions = [];
-    buyok = false;
-    selok = false;
-    foxok = false;
-    kraok = false;
-
-    //Get exchange rates    
-    Fiat.getExRate(sellTo.Currency,buyFrom.Currency, function(rates)
-    {
-        FiatExRate = rates
-    })
-
-    //Get Selling price on Foxbit
-    var Url = 'https://api.blinktrade.com/api/v1/'+sellTo.Currency+'/ticker';
-    getPriceExchange(Url,function(body){
-        var fee = 0.0189; //0,5% Taker + 1.39% Withdraw    
-        console.log(sellTo.Currency +  ' Foxbit - High:'+body.high+
-                                ' - Low: '+body.low+
-                                ' - Last: '+body.last);
-        SelOptions.push(
-            formatOption('FoxBit', rnd(netPrice(body.last,-fee)), sellTo.Currency, 'https://exchange.foxbit.com.br'));
-    });
-
-    //Get Buying price on Kraken
-    Url = 'https://api.kraken.com/0/public/Ticker?pair=BTC'+buyFrom.Currency[1]
-    getPriceExchange(Url, function(body){
-        var fee = 0.0026; //0,26% Taker Order
-        body = body.result.XXBTZEUR;    
-        console.log(buyFrom.Currency[1] +  ' Kraken - High:'+body.h[0]+
-                                ' - Low: '+body.l[0]+
-                                ' - Last: '+body.c[0])
-        buyOptions.push(
-            formatOption('Kraken', rnd(netPrice(body.c[0],fee)), buyFrom.Currency[1], 'https://www.kraken.com/u/trade'));
-    })
-
-    // Get Buying Options from LocalBtc
-    retrieveOffers(buyFrom,function(ad){
-        //no Fee for buying
-        buyOptions.push(
-            formatOption('LocalBTC',rnd(ad.data.temp_price),
-                ad.data.currency, ad.actions.public_view))
-        buyok = true
-        makeAnalysisIfDone(callback)
-    })
-
-    // Get Selling Options from LocalBtc
-    retrieveOffers(sellTo,function(ad){
-        var fee = 0.01; //0,1% Sale
-        SelOptions.push(
-            formatOption('LocalBTC',rnd(netPrice(ad.data.temp_price,-fee)),
-                ad.data.currency, ad.actions.public_view))
-        selok = true
-        makeAnalysisIfDone(callback)
-    })
+        //Get exchange rates    
+        Fiat.getExRate(sellTo.Currency,buyFrom.Currency, function(rates)
+        {
+            FiatExRate = rates
+        })
+    
+        //Get Selling price on Foxbit
+        var Url = 'https://api.blinktrade.com/api/v1/'+sellTo.Currency+'/ticker';
+        getPriceExchange(Url,function(body){
+            var fee = 0.0189; //0,5% Taker + 1.39% Withdraw    
+            console.log(sellTo.Currency +  ' Foxbit - High:'+body.high+
+                                    ' - Low: '+body.low+
+                                    ' - Last: '+body.last);
+            SelOptions.push(
+                formatOption('FoxBit', rnd(netPrice(body.last,-fee)), sellTo.Currency, 'https://exchange.foxbit.com.br'));
+        });
+    
+        //Get Buying price on Kraken
+        Url = 'https://api.kraken.com/0/public/Ticker?pair=BTC'+buyFrom.Currency[1]
+        getPriceExchange(Url, function(body){
+            var fee = 0.0026; //0,26% Taker Order
+            body = body.result.XXBTZEUR;    
+            console.log(buyFrom.Currency[1] +  ' Kraken - High:'+body.h[0]+
+                                    ' - Low: '+body.l[0]+
+                                    ' - Last: '+body.c[0])
+            buyOptions.push(
+                formatOption('Kraken', rnd(netPrice(body.c[0],fee)), buyFrom.Currency[1], 'https://www.kraken.com/u/trade'));
+        })
+    
+        // Get Buying Options from LocalBtc
+        retrieveOffers(buyFrom,function(ad){
+            //no Fee for buying
+            buyOptions.push(
+                formatOption('LocalBTC',rnd(ad.data.temp_price),
+                    ad.data.currency, ad.actions.public_view))
+            buyok = true
+            makeAnalysisIfDone(callback)
+        })
+    
+        // Get Selling Options from LocalBtc
+        retrieveOffers(sellTo,function(ad){
+            var fee = 0.01; //0,1% Sale
+            SelOptions.push(
+                formatOption('LocalBTC',rnd(netPrice(ad.data.temp_price,-fee)),
+                    ad.data.currency, ad.actions.public_view))
+            selok = true
+            makeAnalysisIfDone(callback)
+        })
+    }   
+    catch (e) {
+        console.log("RUN EXCEPTION");
+        console.log(e);
+        console.log("leaving catch block");
+    }
 }
 
 
