@@ -26,8 +26,15 @@ function updateTable(data){
     for (var i = 0; i < data.length;i++){
         
         for (var j = 0; j < data[i].sell.length;j++){
-            var item = [data[i].src, data[i].value, data[i].currency, data[i].localValue,data[i].localCurrency,
-                        data[i].sell[j].src, data[i].sell[j].value, data[i].sell[j].currency,data[i].sell[j].arbitrage]
+            var item = [formatLink(data[i].src,data[i].link), 
+                        data[i].value, 
+                        data[i].currency, 
+                        data[i].localValue,
+                        data[i].localCurrency,
+                        formatLink(data[i].sell[j].src,data[i].sell[j].link),
+                        data[i].sell[j].value, 
+                        data[i].sell[j].currency,
+                        data[i].sell[j].arbitrage]
             dataSet.push(item);
             
         }
@@ -133,4 +140,8 @@ function box3Icon(dest){
     }
 
     return 'ion ion-social-bitcoin-outline' 
+}
+
+function formatLink(input, link){
+    return( '<a href="'+link+'" target="_blank">'+input+'</a>')
 }
