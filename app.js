@@ -194,8 +194,9 @@ function mankeAnalysis(callback){
 
 function getPriceExchange(url,callback){
     request(url, function (error, response, body) {
-        if (error){
+        if (error || response.statusCode != 200){
             // Print the response status code if a response was received 
+            console.log('error call on '+ url); 
             console.log('statusCode:', response && response.statusCode); 
             console.log('error:', error); // Print the error if one occurred 
         }else{
