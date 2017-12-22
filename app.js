@@ -84,7 +84,7 @@ function run(callback){
         })
     
         //Get Selling price on Foxbit
-        var Url = 'https://api.blinktrade.com/api/v1/'+sellTo.Currency+'/ticker';
+        var Url = 'https://api.blinktrade.com/api/v1/'+sellTo.Currency+'/ticker?crypto_currency=BTC';
         getPriceExchange(Url,function(body){
             var fee = 0.0189; //0,5% Taker + 1.39% Withdraw    
             console.log(sellTo.Currency +  ' Foxbit - High:'+body.high+
