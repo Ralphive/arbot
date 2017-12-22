@@ -49,8 +49,6 @@ app.get('/', function(req, res){
     res.sendFile(path.join(__dirname, 'views/index.html'));
 });
 
-//Called by FB Integration
-// Receives a Json with user + Pictures array
 app.get('/getData', function(req, res){ 
         res.send(output);        
 });
@@ -75,6 +73,7 @@ function run(callback){
         selok = false;
         foxok = false;
         kraok = false;
+        coiok = false;
     
         //Get exchange rates    
         Fiat.getExRate(sellTo.Currency,buyFrom.Currency, function(rates)
@@ -104,9 +103,27 @@ function run(callback){
                                     ' - Low: '+body.l[0]+
                                     ' - Last: '+body.c[0])
             buyOptions.push(
-                formatOption('Kraken', rnd(netPrice(body.c[0],fee)), buyFrom.Currency[1], 'https://www.kraken.com/u/trade'));
-        })
+                formatOption('Kraken', rnd(netPrice(body.c[0],fee)), 
+                            buyFrom.Currency[1], 'https://www.kraken.com/u/trade'));
+            buyok = true
+            makeAnalysisIfDone(callback)
     
+        })
+
+        //Get Buying price on CoinBase 
+        for(var j = 0; j < buyFrom.Currency.length; j++){
+            Url = 'https://api.coinbase.com/v2/prices/BTC-'+buyFrom.Currency[j]+'/buy'
+            getPriceExchange(Url, function(body){
+                var fee = 0.0025; //0,25% Taker Order
+                body = body.data;    
+                console.log('Coinbase '+body.base + ' price: '+body.currency+' '+ body.amount)
+                buyOptions.push(
+                    formatOption('Coinbase', rnd(netPrice(body.amount,fee)), body.currency, 'https://www.gdax.com'));
+                    buyok = true
+                    makeAnalysisIfDone(callback)
+            })     
+        }
+       
         // Get Buying Options from LocalBtc
         retrieveOffers(buyFrom,function(ad){
             //no Fee for buying
@@ -115,6 +132,7 @@ function run(callback){
                     ad.data.currency, ad.actions.public_view))
             buyok = true
             makeAnalysisIfDone(callback)
+
         })
     
         // Get Selling Options from LocalBtc
