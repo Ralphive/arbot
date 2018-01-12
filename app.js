@@ -98,15 +98,21 @@ function run(callback){
         Url = 'https://api.kraken.com/0/public/Ticker?pair=BTC'+buyFrom.Currency[1]
         getPriceExchange(Url, function(body){
             var fee = 0.0026; //0,26% Taker Order
-            body = body.result.XXBTZEUR;    
-            console.log(buyFrom.Currency[1] +  ' Kraken - High:'+body.h[0]+
-                                    ' - Low: '+body.l[0]+
-                                    ' - Last: '+body.c[0])
-            buyOptions.push(
-                formatOption('Kraken', rnd(netPrice(body.c[0],fee)), 
-                            buyFrom.Currency[1], 'https://www.kraken.com/u/trade'));
-            buyok = true
-            makeAnalysisIfDone(callback)
+            try{
+            
+                body = body.result.XXBTZEUR;    
+                console.log(buyFrom.Currency[1] +  ' Kraken - High:'+body.h[0]+
+                                        ' - Low: '+body.l[0]+
+                                        ' - Last: '+body.c[0])
+                buyOptions.push(
+                    formatOption('Kraken', rnd(netPrice(body.c[0],fee)), 
+                                buyFrom.Currency[1], 'https://www.kraken.com/u/trade'));
+                buyok = true
+                makeAnalysisIfDone(callback)
+            }
+            catch (e){
+                console.error("Error retrieving Kraken Prices");
+            }
     
         })
 
@@ -248,7 +254,7 @@ var server = app.listen(port, function(){
     run(function(data){
         output = data
     })
-    setInterval(run,40000,function(data){
+    setInterval(run,10000,function(data){
         output = data
     })
   });
